@@ -1,0 +1,19 @@
+{
+  "name": "@dreamyoungs/ncp-external-access",
+  "version": "0.1.0",
+  "description": "Unofficial NCP External Access X.509 client for Node.js",
+  "license": "MIT",
+  "type": "module",
+  "engines": {"node": ">=24"},
+  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"}},
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "repository": {"type": "git", "url": "git+https://github.com/dreamyoungs/ncp-external-access.git", "directory": "typescript"},
+  "publishConfig": {"access": "public"},
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepack": "npm test"
+  },
+  "devDependencies": {"@types/node": "24.13.6", "typescript": "6.0.3"}
+}
