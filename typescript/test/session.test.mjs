@@ -2,15 +2,24 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {generateKeyPairSync, verify, X509Certificate} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {mkdtempSync, writeFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {createSessionRequest, createSession, ExternalAccessError} from '../dist/index.js';
 
 function fixture(type = 'rsa') {
   const pair = type === 'rsa' ? generateKeyPairSync('rsa', {modulusLength: 2048})
     : generateKeyPairSync('ec', {namedCurve: 'prime256v1'});
   const privateKey = Buffer.from(pair.privateKey.export({format: 'pem', type: 'pkcs8'}));
-  const result = spawnSync('openssl', ['req', '-new', '-x509', '-key', '/dev/stdin', '-subj', '/CN=synthetic-test-only', '-days', '1'], {input: privateKey});
-  assert.equal(result.status, 0, 'OpenSSL fixture generation failed');
-  return {privateKey, certificate: result.stdout.toString(), trustAnchorNrn: 'synthetic-trust', profileNrn: 'synthetic-profile', roleNrn: 'synthetic-role'};
+  // Node의 pipe를 /dev/stdin 경로로 다시 열지 않는다. 합성 키만 전용 임시 디렉터리에 저장한다.
+  const directory = mkdtempSync(join(tmpdir(), 'ncp-synthetic-test-'));
+  try {
+    const keyPath = join(directory, 'key.pem');
+    writeFileSync(keyPath, privateKey, {mode: 0o600});
+    const result = spawnSync('openssl', ['req', '-new', '-x509', '-key', keyPath, '-subj', '/CN=synthetic-test-only', '-days', '1']);
+    assert.equal(result.status, 0, `OpenSSL fixture generation failed: ${result.stderr?.toString()}`);
+    return {privateKey, certificate: result.stdout.toString(), trustAnchorNrn: 'synthetic-trust', profileNrn: 'synthetic-profile', roleNrn: 'synthetic-role'};
+  } finally { rmSync(directory, {recursive: true, force: true}); }
 }
 
 for (const type of ['rsa', 'ec']) {
